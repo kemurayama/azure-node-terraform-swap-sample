@@ -1,0 +1,55 @@
+name: Staging
+
+on:
+  pull_request:
+    branches:
+      - main
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  NODE_VERSION: "12.19"
+  TERRAFORM_VERSION: 0.14.2
+  AZURE_WEBAPP_PACKAGE_PATH: "./webapp"
+  RG_NAME: rg-terraform-swap
+  WEBAPP_NAME: kemuraswap
+
+jobs:
+  node:
+    name: "Node"
+    environment:
+      name: Staging
+      url: ${{ steps.deploy_web_app.outputs.webapp-url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: "azure login"
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Use Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: npm install, build, and test
+        run: |
+          npm install
+          npm run build --if-present
+          npm run test --if-present
+        working-directory: ${{env.AZURE_WEBAPP_PACKAGE_PATH}}
+
+      - name: "Deploy to Azure WebApp"
+        id: deploy_web_app
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{env.WEBAPP_NAME}}
+          package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+          slot-name: staging
+
+      - name: logout
+        run: |
+          az logout

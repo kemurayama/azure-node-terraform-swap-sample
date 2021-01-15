@@ -1,0 +1,40 @@
+name: Production
+
+on:
+  push:
+    branches:
+      - main
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  NODE_VERSION: "12.19"
+  TERRAFORM_VERSION: 0.14.2
+  AZURE_WEBAPP_PACKAGE_PATH: './webapp'
+  RG_NAME: rg-terraform-swap
+  WEBAPP_NAME: kemuraswap
+
+jobs:
+  swap:
+    environment:
+      name: Production
+    runs-on: ubuntu-latest
+    name: "SWAP Web App"
+    steps:
+      - name: "azure login"
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Azure CLI Action
+        uses: Azure/cli@1.0.4
+        with:
+          # Specify the script here
+          inlineScript: |
+            az webapp deployment slot swap --slot staging --target-slot production -g ${{env.RG_NAME}} -n ${{env.WEBAPP_NAME}}
+
+      - name: logout
+        run: |
+          az logout
